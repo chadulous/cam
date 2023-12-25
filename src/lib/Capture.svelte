@@ -1,19 +1,21 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { writable } from "svelte/store";
+    import { writable, type Writable } from "svelte/store";
     import flash from "./flash";
     import Dropdown from "./Dropdown.svelte";
+    import FlashButton from "./FlashButton.svelte";
     let videoStream: MediaStream;
     let canvas: HTMLCanvasElement;
-    let a: HTMLLinkElement;
-    const flashOpacity = flash();
-    flashOpacity.subscribe(console.log);
+    const flashEnabled = writable(false);
+    const flashOpacity = flash(flashEnabled);
     let ctx: CanvasRenderingContext2D;
     const devices = writable<MediaDeviceInfo[]>([]);
     const selectedDeviceId = writable<string>();
     let videoElement: HTMLVideoElement;
-    selectedDeviceId.subscribe(() => startVideo());
-    async function getVideoDevices() {
+
+    export let gallery: Writable<string[]>
+    selectedDeviceId.subscribe(() => enableCamera());
+    async function getInputs() {
         try {
             const devicesInfo = await navigator.mediaDevices.enumerateDevices();
             $devices = devicesInfo.filter(
@@ -25,7 +27,7 @@
         }
     }
 
-    async function startVideo() {
+    async function enableCamera() {
         try {
             const constraints: MediaStreamConstraints = {
                 video: {
@@ -44,58 +46,34 @@
             console.error("Error accessing camera:", error);
         }
     }
-
-    function stopVideo() {
-        // Stop the video stream when the component is destroyed or when needed
-        if (videoStream) {
-            const tracks = videoStream.getTracks();
-            tracks.forEach((track) => track.stop());
-        }
-    }
-
-    function takePicture() {
+    async function takePicture() {
         console.log(videoElement.videoHeight, videoElement.videoWidth);
         canvas.height = videoElement.videoHeight;
         canvas.width = videoElement.videoWidth;
-        flashOpacity.flash();
+        await flashOpacity.startFlash();
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        await flashOpacity.finishFlash();
         const data = canvas.toDataURL("image/png");
+        gallery.update(gallery => {
+            gallery.push(data);
+            console.log("HI")
+            return gallery;
+        })
     }
     onMount(async () => {
         await navigator.mediaDevices.getUserMedia({ video: true });
-        await getVideoDevices();
-        await startVideo();
+        await getInputs();
+        await enableCamera();
     });
 </script>
 <canvas class="hidden" bind:this={canvas}></canvas>
 
 <div class="flex h-full w-full flex-col bg-[#1b1b1c] text-white">
-    <div class="flex px-2 flex-row shadow-lg rounded-b-lg bg-slate-700/50">
-        <div
-            class="flex items-center justify-center px-4 py-2"
-        >
-            <button
-                class="btn btn-xs rounded-r-none"
-                title="Reload sources"
-                on:click={getVideoDevices}
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="w-4 h-4 inline"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                    />
-                </svg>
-            </button>
-            <Dropdown {selectedDeviceId} {devices} />
-        </div>
+    <div class="flex items-center justify-center py-2 px-6 flex-row shadow-lg rounded-b-lg bg-slate-700/50">
+
+            <Dropdown on:reload={getInputs} {selectedDeviceId} {devices} />
+            <div class="flex-grow"></div>
+            <FlashButton {flashEnabled} />
     </div>
     <div class="flex-grow flex flex-row items-center justify-center">
         <video bind:this={videoElement} id="video" autoplay></video>

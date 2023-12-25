@@ -1,15 +1,29 @@
 <script lang="ts">
+    import { createEventDispatcher } from "svelte";
     import { derived, writable, type Writable } from "svelte/store";
 
     export let devices: Writable<MediaDeviceInfo[]>;
     export let selectedDeviceId: Writable<string>;
-    const deviceName = derived([devices, selectedDeviceId], ([devices, selectedDeviceId]) => {
-        return devices.find(v => v.deviceId === selectedDeviceId)?.label || '<no device>'
-    })
+    const deviceName = derived(
+        [devices, selectedDeviceId],
+        ([devices, selectedDeviceId]) => {
+            return (
+                devices.find((v) => v.deviceId === selectedDeviceId)?.label ||
+                "<no device>"
+            );
+        },
+    );
+    const dispatch = createEventDispatcher();
 </script>
 
 <div class="dropdown dropdown-right inline">
-    <div tabindex="0" role="button" class="btn btn-xs rounded-l-none" title="Change source">
+    <div
+        tabindex="0"
+        role="button"
+        class="btn btn-xs"
+        title="Change source"
+        on:click={() => dispatch("reload")}
+    >
         <span>{$deviceName}</span>
         <svg
             xmlns="http://www.w3.org/2000/svg"
