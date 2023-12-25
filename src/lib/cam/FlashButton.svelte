@@ -3,7 +3,10 @@
     export let flashEnabled: Writable<boolean>;
 </script>
 
-<label class="swap kbd transition-all duration-200" class:bg-amber-400={$flashEnabled}>
+<label
+    class="swap kbd transition-all duration-200"
+    class:bg-amber-400={$flashEnabled}
+>
     <!-- this hidden checkbox controls the state -->
     <input type="checkbox" bind:checked={$flashEnabled} />
     <svg

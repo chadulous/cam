@@ -70,7 +70,6 @@
 
 <div class="flex h-full w-full flex-col bg-[#1b1b1c] text-white">
     <div class="flex items-center justify-center py-2 px-6 flex-row shadow-lg rounded-b-lg bg-slate-700/50">
-
             <Dropdown on:reload={getInputs} {selectedDeviceId} {devices} />
             <div class="flex-grow"></div>
             <FlashButton {flashEnabled} />
@@ -112,7 +111,6 @@
 ></div>
 
 <style>
-    /* You can add some styling to the video element if needed */
     #video {
         width: 100%;
         max-width: 640px;
