@@ -6,6 +6,8 @@
 
 <div class="h-full w-full overflow-x-hidden overflow-y-scroll">
     {#each $gallery as picture}
-        <img src={picture} alt="" />
+        <button on:click={() => console.log(picture)}>
+            <img src={picture} alt="" />
+        </button>
     {/each}
 </div>

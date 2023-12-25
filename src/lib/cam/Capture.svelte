@@ -1,19 +1,27 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { writable, type Writable } from "svelte/store";
-    import flash from "./flash";
     import Dropdown from "./Dropdown.svelte";
     import FlashButton from "./FlashButton.svelte";
+    import TimerSetting from "./TimerSetting.svelte";
+    // Defered Variables
     let videoStream: MediaStream;
     let canvas: HTMLCanvasElement;
-    const flashEnabled = writable(false);
-    const flashOpacity = flash(flashEnabled);
     let ctx: CanvasRenderingContext2D;
+    let videoElement: HTMLVideoElement;
+    
+    // Stores
+    import { flashEnabled, timer } from "./settings";
+    import flash from "./flash";
+    import countdown from "./countdown";
+    const flashOpacity = flash(flashEnabled);
+    const countdownTimer = countdown();
+    countdownTimer.subscribe(console.log);
     const devices = writable<MediaDeviceInfo[]>([]);
     const selectedDeviceId = writable<string>();
-    let videoElement: HTMLVideoElement;
+    const enabled = writable<boolean>(true);
 
-    export let gallery: Writable<string[]>
+    export let gallery: Writable<string[]>;
     selectedDeviceId.subscribe(() => enableCamera());
     async function getInputs() {
         try {
@@ -47,18 +55,27 @@
         }
     }
     async function takePicture() {
+        enabled.set(false);
         console.log(videoElement.videoHeight, videoElement.videoWidth);
         canvas.height = videoElement.videoHeight;
         canvas.width = videoElement.videoWidth;
+        console.log("Countdown:", $timer || "none");
+        console.time("countdown");
+        await countdownTimer.set($timer);
+        console.timeEnd("countdown");
+        console.log("Flick flash: ", $flashEnabled);
         await flashOpacity.startFlash();
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        console.log("Drew Frame");
         await flashOpacity.finishFlash();
         const data = canvas.toDataURL("image/png");
-        gallery.update(gallery => {
+        console.log("Captured buffer");
+        gallery.update((gallery) => {
             gallery.push(data);
-            console.log("HI")
+            console.log("Added to gallery");
             return gallery;
-        })
+        });
+        enabled.set(true);
     }
     onMount(async () => {
         await navigator.mediaDevices.getUserMedia({ video: true });
@@ -66,13 +83,18 @@
         await enableCamera();
     });
 </script>
+
 <canvas class="hidden" bind:this={canvas}></canvas>
 
 <div class="flex h-full w-full flex-col bg-[#1b1b1c] text-white">
-    <div class="flex items-center justify-center py-2 px-6 flex-row shadow-lg rounded-b-lg bg-slate-700/50">
-            <Dropdown on:reload={getInputs} {selectedDeviceId} {devices} />
-            <div class="flex-grow"></div>
-            <FlashButton {flashEnabled} />
+    <div
+        class="flex items-center justify-center py-2 px-6 flex-row shadow-lg rounded-b-lg bg-slate-700/50"
+    >
+        <Dropdown on:reload={getInputs} {enabled} {selectedDeviceId} {devices} />
+        <div class="flex-grow"></div>
+        <TimerSetting {enabled} {timer} />
+        <div class="w-2"></div>
+        <FlashButton {enabled} {flashEnabled} />
     </div>
     <div class="flex-grow flex flex-row items-center justify-center">
         <video bind:this={videoElement} id="video" autoplay></video>
@@ -80,6 +102,8 @@
     <div class="flex items-center justify-center mb-4">
         <button
             on:click={takePicture}
+            disabled={!$enabled}
+            class:cursor-not-allowed={!$enabled}
             class="flex h-16 w-16 kbd hover:scale-105 active:scale-95 items-center justify-center rounded-full bg-red-500 shadow-lg transition-all hover:brightness-150"
         >
             <svg
@@ -109,6 +133,10 @@
     class="bg-white h-screen w-screen absolute z-[99] top-0 left-0 pointer-events-none"
     style="opacity: {$flashOpacity * 100}%;"
 ></div>
+
+<div
+    class="h-screen w-screen absolute z-[98] top-0 left-0 pointer-events-none flex items-center justify-center text-7xl text-white"
+>{$countdownTimer || ""}</div>
 
 <style>
     #video {

@@ -4,6 +4,7 @@
 
     export let devices: Writable<MediaDeviceInfo[]>;
     export let selectedDeviceId: Writable<string>;
+    export let enabled: Writable<boolean>;
     const deviceName = derived(
         [devices, selectedDeviceId],
         ([devices, selectedDeviceId]) => {
@@ -22,6 +23,7 @@
         role="button"
         class="btn btn-xs"
         title="Change source"
+        class:pointer-events-none={!$enabled}
         on:click={() => dispatch("reload")}
     >
         <span>{$deviceName}</span>
@@ -47,7 +49,7 @@
     >
         {#each $devices as device (device.deviceId)}
             <li>
-                <a on:click={() => selectedDeviceId.set(device.deviceId)}>
+                <a class:disabled={!$enabled} on:click={() => selectedDeviceId.set(device.deviceId)}>
                     {device.label || `Camera ${device.deviceId}`}
                 </a>
             </li>

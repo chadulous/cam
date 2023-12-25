@@ -1,14 +1,16 @@
 <script lang="ts">
     import { type Writable } from "svelte/store";
     export let flashEnabled: Writable<boolean>;
+    export let enabled: Writable<boolean>;
 </script>
 
 <label
     class="swap kbd transition-all duration-200"
     class:bg-amber-400={$flashEnabled}
+    class:*:cursor-not-allowed={!$enabled}
 >
     <!-- this hidden checkbox controls the state -->
-    <input type="checkbox" bind:checked={$flashEnabled} />
+    <input type="checkbox" bind:checked={$flashEnabled} disabled={!$enabled} />
     <svg
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
