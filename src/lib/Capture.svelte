@@ -1,21 +1,25 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
-
+    import flash from "./flash";
+    import Dropdown from "./Dropdown.svelte";
     let videoStream: MediaStream;
     let canvas: HTMLCanvasElement;
     let a: HTMLLinkElement;
+    const flashOpacity = flash();
+    flashOpacity.subscribe(console.log);
     let ctx: CanvasRenderingContext2D;
     const devices = writable<MediaDeviceInfo[]>([]);
     const selectedDeviceId = writable<string>();
     let videoElement: HTMLVideoElement;
-
+    selectedDeviceId.subscribe(() => startVideo());
     async function getVideoDevices() {
         try {
             const devicesInfo = await navigator.mediaDevices.enumerateDevices();
             $devices = devicesInfo.filter(
                 (device) => device.kind === "videoinput",
             );
+            $selectedDeviceId = $devices[0].deviceId;
         } catch (error) {
             console.error("Error enumerating video devices:", error);
         }
@@ -29,7 +33,8 @@
                 },
             };
 
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const stream =
+                await navigator.mediaDevices.getUserMedia(constraints);
             videoStream = stream;
             videoElement.srcObject = stream;
             ctx = canvas.getContext("2d");
@@ -52,28 +57,81 @@
         console.log(videoElement.videoHeight, videoElement.videoWidth);
         canvas.height = videoElement.videoHeight;
         canvas.width = videoElement.videoWidth;
+        flashOpacity.flash();
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL("image/png");
     }
-    onMount(() => {
-        navigator.mediaDevices.getUserMedia({ video: true });
+    onMount(async () => {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+        await getVideoDevices();
+        await startVideo();
     });
 </script>
+<canvas class="hidden" bind:this={canvas}></canvas>
 
-<div>
-    <button on:click={getVideoDevices}>Refresh Devices</button>
-    <select bind:value={$selectedDeviceId}>
-        {#each $devices as device (device.deviceId)}
-            <option value={device.deviceId}
-                >{device.label || `Camera ${device.deviceId}`}</option
+<div class="flex h-full w-full flex-col bg-[#1b1b1c] text-white">
+    <div class="flex px-2 flex-row shadow-lg rounded-b-lg bg-slate-700/50">
+        <div
+            class="flex items-center justify-center px-4 py-2"
+        >
+            <button
+                class="btn btn-xs rounded-r-none"
+                title="Reload sources"
+                on:click={getVideoDevices}
             >
-        {/each}
-    </select>
-    <button on:click={startVideo}>Enable Cam</button>
-    <button on:click={takePicture}>Take Picture</button>
-    <video bind:this={videoElement} id="video" autoplay></video>
-    <canvas bind:this={canvas}></canvas>
-    <a bind:this={a}>download</a>
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="w-4 h-4 inline"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                    />
+                </svg>
+            </button>
+            <Dropdown {selectedDeviceId} {devices} />
+        </div>
+    </div>
+    <div class="flex-grow flex flex-row items-center justify-center">
+        <video bind:this={videoElement} id="video" autoplay></video>
+    </div>
+    <div class="flex items-center justify-center mb-4">
+        <button
+            on:click={takePicture}
+            class="flex h-16 w-16 kbd hover:scale-105 active:scale-95 items-center justify-center rounded-full bg-red-500 shadow-lg transition-all hover:brightness-150"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="h-6 w-6"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"
+                />
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"
+                />
+            </svg>
+        </button>
+    </div>
 </div>
+
+<div
+    class="bg-white h-screen w-screen absolute z-[99] top-0 left-0 pointer-events-none"
+    style="opacity: {$flashOpacity * 100}%;"
+></div>
 
 <style>
     /* You can add some styling to the video element if needed */
